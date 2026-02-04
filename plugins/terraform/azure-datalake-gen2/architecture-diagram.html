@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Data Lake Gen2 Architecture</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #ffffff;
+            color: #000000;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+        .diagram {
+            background-color: #ffffff;
+            border: 2px solid #000;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.2;
+            font-size: 12px;
+        }
+        .legend {
+            margin-top: 30px;
+            font-family: Arial, sans-serif;
+        }
+        .legend h2 {
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+        }
+        .legend ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .legend li {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #000;
+            background-color: #f5f5f5;
+        }
+        .legend strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .data-flow {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px dashed #000;
+            background-color: #f9f9f9;
+        }
+        @media print {
+            body {
+                background-color: white;
+            }
+            .legend li {
+                background-color: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Azure Data Lake Gen2 Infrastructure Architecture</h1>
+
+    <div class="diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Azure Subscription                              │
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐ │
+│  │           Resource Group (rg-datalake-prod)                   │ │
+│  │                                                               │ │
+│  │  ┌──────────────────────────────────────────────────────┐    │ │
+│  │  │  Storage Account (Data Lake Gen2)                    │    │ │
+│  │  │  - HNS Enabled                                       │    │ │
+│  │  │                                                      │    │ │
+│  │  │  ┌────────────┐  ┌────────────┐  ┌────────────┐    │    │ │
+│  │  │  │  Bronze    │  │  Silver    │  │   Gold     │    │    │ │
+│  │  │  │ Container  │  │ Container  │  │ Container  │    │    │ │
+│  │  │  │ (Raw data) │  │ (Cleaned)  │  │(Aggregated)│    │    │ │
+│  │  │  └────────────┘  └────────────┘  └────────────┘    │    │ │
+│  │  └──────────────────────────────────────────────────────┘    │ │
+│  │                           ▲                                   │ │
+│  │                           │                                   │ │
+│  │                           │ RBAC: Storage Blob Data           │ │
+│  │                           │       Contributor                 │ │
+│  │                           │                                   │ │
+│  │  ┌────────────────────────┴───────────────────────────────┐  │ │
+│  │  │     Azure Synapse Workspace                            │  │ │
+│  │  │     - SQL Pools                                        │  │ │
+│  │  │     - Serverless SQL                                   │  │ │
+│  │  │     - Spark Pools (optional)                           │  │ │
+│  │  │                                                        │  │ │
+│  │  │     Firewall Rules:                                    │  │ │
+│  │  │     - Azure Services (0.0.0.0)                         │  │ │
+│  │  │     - Client IP (your public IP)                       │  │ │
+│  │  └────────────────────────────────────────────────────────┘  │ │
+│  │                           │                                   │ │
+│  │                           │                                   │ │
+│  │  ┌────────────────────────┴───────────────────────────────┐  │ │
+│  │  │     Azure Data Factory (optional)                      │  │ │
+│  │  │     - Data Pipelines                                   │  │ │
+│  │  │     - ETL/ELT Orchestration                            │  │ │
+│  │  └────────────────────────────────────────────────────────┘  │ │
+│  │                                                               │ │
+│  │  ┌────────────────────────────────────────────────────────┐  │ │
+│  │  │     Azure Key Vault (optional)                         │  │ │
+│  │  │     - Secrets Management                               │  │ │
+│  │  │     - Credentials Storage                              │  │ │
+│  │  └────────────────────────────────────────────────────────┘  │ │
+│  └───────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              │
+                              ▼
+                     ┌────────────────────┐
+                     │   Power BI /       │
+                     │   External Apps    │
+                     └────────────────────┘
+    </div>
+
+    <div class="data-flow">
+        DATA FLOW: Raw Data → Bronze → Silver → Gold → Analytics/BI Tools
+    </div>
+
+    <div class="legend">
+        <h2>Key Components</h2>
+
+        <ul>
+            <li>
+                <strong>1. Storage Account (Data Lake Gen2)</strong>
+                Hierarchical Namespace enabled for file system semantics. Contains three containers implementing the Medallion Architecture pattern:
+                <br>• <strong>Bronze:</strong> Raw ingested data as-is from source systems
+                <br>• <strong>Silver:</strong> Cleaned, validated, and transformed data
+                <br>• <strong>Gold:</strong> Business-ready aggregated data for analytics
+            </li>
+
+            <li>
+                <strong>2. Azure Synapse Workspace</strong>
+                Unified analytics platform providing:
+                <br>• SQL pools for data warehousing workloads
+                <br>• Serverless SQL endpoints for ad-hoc queries
+                <br>• Spark pools for big data processing (optional)
+                <br>• Direct integration with Data Lake storage
+            </li>
+
+            <li>
+                <strong>3. Azure Data Factory (optional)</strong>
+                Data integration service for:
+                <br>• ETL/ELT pipeline orchestration
+                <br>• Automated data movement between systems
+                <br>• Scheduled data transformations
+                <br>• Integration with 90+ data sources
+            </li>
+
+            <li>
+                <strong>4. Azure Key Vault (optional)</strong>
+                Centralized secrets management:
+                <br>• Secure storage for connection strings
+                <br>• API keys and certificates management
+                <br>• Access policies and auditing
+                <br>• Integration with all Azure services
+            </li>
+
+            <li>
+                <strong>5. Security & Access Control</strong>
+                Multi-layered security approach:
+                <br>• RBAC role assignments for service identities
+                <br>• Firewall rules controlling Synapse access
+                <br>• Network isolation with private endpoints (optional)
+                <br>• Azure AD authentication integration
+                <br>• Storage Blob Data Contributor roles for services
+            </li>
+
+            <li>
+                <strong>6. External Integration</strong>
+                Connectivity for analytics and reporting:
+                <br>• Power BI for business intelligence
+                <br>• Azure Data Studio for SQL queries
+                <br>• Third-party ETL tools
+                <br>• Custom applications via SDKs
+            </li>
+        </ul>
+
+        <h2>Medallion Architecture Pattern</h2>
+        <p>
+            This infrastructure implements the Medallion (Multi-hop) Architecture, a data design pattern
+            that organizes data in a lakehouse with progressively higher levels of quality:
+        </p>
+        <ul>
+            <li><strong>Bronze Layer:</strong> Raw data ingestion - minimal transformation, preserves source format</li>
+            <li><strong>Silver Layer:</strong> Filtered, cleaned, and augmented - business rules applied</li>
+            <li><strong>Gold Layer:</strong> Business-level aggregates - optimized for analytics and reporting</li>
+        </ul>
+
+        <h2>Resource Configuration</h2>
+        <ul>
+            <li><strong>Resource Group:</strong> rg-datalake-prod</li>
+            <li><strong>Region:</strong> UK South (configurable)</li>
+            <li><strong>Storage Replication:</strong> LRS (Locally Redundant Storage)</li>
+            <li><strong>Storage Tier:</strong> Standard</li>
+            <li><strong>HNS (Hierarchical Namespace):</strong> Enabled</li>
+        </ul>
+    </div>
+
+    <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #000; font-family: Arial, sans-serif; font-size: 12px;">
+        <p>Generated from Terraform configuration - Azure Data Lake Gen2 Infrastructure</p>
+        <p>Managed by Terraform | Environment: Production</p>
+    </footer>
+</body>
+</html>
