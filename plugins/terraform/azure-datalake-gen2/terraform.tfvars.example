@@ -1,0 +1,33 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and update with your values
+
+# Basic Configuration
+resource_group_name  = "rg-datalake-prod"
+location             = "uksouth"
+storage_account_name = "stdatalakegen2prod"  # Must be globally unique, lowercase, 3-24 chars
+
+# Storage Configuration
+storage_account_tier     = "Standard"  # Standard or Premium
+storage_replication_type = "LRS"       # LRS, GRS, RAGRS, ZRS
+enable_private_access    = false       # Set to true for production
+
+# Synapse Configuration
+synapse_workspace_name       = "synapse-datalake-prod"
+synapse_sql_admin_username   = "sqladminuser"
+synapse_sql_admin_password   = "YourComplexPassword123!"  # CHANGE THIS!
+client_ip_address            = ""                         # Your public IP for Synapse access
+
+# Optional Components
+create_data_factory = true
+data_factory_name   = "adf-datalake-prod"
+
+create_key_vault = true
+key_vault_name   = "kv-datalake-prod"  # Must be globally unique
+
+# Tags
+tags = {
+  Environment = "Production"
+  Project     = "DataLake"
+  ManagedBy   = "Terraform"
+  Owner       = "DataTeam"
+}
